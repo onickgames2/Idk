@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teste de Terror Radius</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1a1620; --panel:#231d2a; --panel2:#2b2433; --line:#3b3345;
+    --bone:#ebe4d3; --dim:#a79fb0; --blood:#c4232d; --blood-hi:#d6303b; --amber:#d9a441;
+  }
+  *{box-sizing:border-box}
+  html{color-scheme:dark}
+  body{margin:0;background:var(--bg);color:var(--bone);font:16px/1.5 'Barlow',system-ui,sans-serif}
+  h1,h2{font-family:'Special Elite','Courier New',monospace;font-weight:400;margin:0}
+  header{max-width:1200px;margin:0 auto;padding:28px 24px 4px}
+  h1{font-size:clamp(28px,5vw,44px);line-height:1.1}
+  header p{color:var(--dim);margin:8px 0 0;max-width:62ch}
+  main{max-width:1200px;margin:0 auto;padding:16px 24px 56px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:24px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr;padding:12px 14px 48px}header{padding:20px 14px 0}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px}
+  .panel + .panel{margin-top:16px}
+  h2{font-size:20px;margin-bottom:12px}
+  canvas#radar{display:block;width:100%;max-width:560px;aspect-ratio:1/1;margin:0 auto;background:var(--panel2);border:1px solid var(--line);border-radius:6px;cursor:grab;touch-action:none}
+  canvas#radar:active{cursor:grabbing}
+  .readout{margin:14px 0 4px;min-height:58px}
+  .readout .big{font-family:'Special Elite','Courier New',monospace;font-size:26px;line-height:1.2}
+  .readout .sub{color:var(--dim);font-size:15px}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .lbtn{min-width:56px;padding:10px 14px;border:1px solid var(--line);background:var(--panel2);color:var(--bone);border-radius:4px;font:600 15px 'Barlow',system-ui,sans-serif;cursor:pointer;border-left:4px solid var(--c,var(--line))}
+  .lbtn:hover:not(:disabled){background:#352c3f}
+  .lbtn.on{background:var(--c);color:#fff;border-color:var(--c)}
+  .lbtn:disabled{opacity:.35;cursor:not-allowed}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:10px 0}
+  .field{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--dim)}
+  .field.inline{flex-direction:row;align-items:center;gap:8px}
+  .slider{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin:10px 0}
+  .slider label{grid-column:1/3;font-size:14px;color:var(--dim)}
+  .slider output{font-variant-numeric:tabular-nums;min-width:64px;text-align:right}
+  input[type=range]{width:100%;accent-color:var(--blood)}
+  input[type=number],select{background:var(--bg);color:var(--bone);border:1px solid var(--line);border-radius:4px;padding:7px 9px;font:inherit;width:96px}
+  select{width:auto}
+  input[type=checkbox],input[type=radio]{accent-color:var(--blood);width:17px;height:17px}
+  input[type=file]{color:var(--dim);font-size:14px;max-width:100%}
+  input[type=file]::file-selector-button{background:var(--panel2);color:var(--bone);border:1px solid var(--line);border-radius:4px;padding:7px 12px;margin-right:10px;font:inherit;cursor:pointer}
+  .play{background:var(--blood);color:#fff;border:0;border-radius:4px;padding:12px 28px;font:600 17px 'Barlow',system-ui,sans-serif;cursor:pointer}
+  .play:hover{background:var(--blood-hi)}
+  .play.on{background:var(--panel2);border:1px solid var(--line);color:var(--bone)}
+  .hint{color:var(--dim);font-size:14px;margin:6px 0 0}
+  .slot{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:12px;margin-top:10px}
+  .slot-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:8px;flex-wrap:wrap}
+  .slot-head strong{font-weight:600}
+  .fname{color:var(--dim);font-size:13px;overflow-wrap:anywhere}
+  .seg{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .seglen{font-size:13px;color:var(--dim)}
+  .seglen.bad{color:#ff7b82}
+  .meter{height:4px;background:var(--bg);border-radius:2px;margin-top:10px;overflow:hidden}
+  .meter i{display:block;height:100%;width:0;background:var(--amber)}
+  .slot[data-id=chase] .meter i{background:var(--blood-hi)}
+  .btn2{background:var(--panel);color:var(--bone);border:1px solid var(--line);border-radius:4px;padding:7px 12px;font:inherit;font-size:14px;cursor:pointer}
+  .btn2:hover{background:#352c3f}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--bone);color:#1a1620;padding:10px 16px;border-radius:4px;font-weight:500;max-width:90vw;opacity:0;pointer-events:none;transition:opacity .2s}
+  #toast.show{opacity:1}
+  @media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Teste de Terror Radius</h1>
+  <p>Carregue o áudio, arraste o killer no radar e ouça as layers trocando com fade. Funciona com um arquivo para cada layer ou com um único arquivo dividido em trechos.</p>
+</header>
+
+<main>
+  <section>
+    <div class="panel">
+      <canvas id="radar" aria-label="Radar do terror radius. Arraste o killer para mudar a distância."></canvas>
+      <div class="readout" aria-live="polite">
+        <div class="big" id="rdBig">Layer 0</div>
+        <div class="sub" id="rdSub"></div>
+      </div>
+      <div class="bar" id="layerBar" role="group" aria-label="Layers"></div>
+      <div class="slider">
+        <label for="dist">Distância do killer</label>
+        <input type="range" id="dist" min="0" max="48" step="0.5" value="60">
+        <output id="distOut" for="dist">0 studs</output>
+      </div>
+      <div class="row">
+        <button class="play" id="playBtn" type="button">Tocar</button>
+        <div class="slider" style="flex:1;min-width:180px;margin:0">
+          <label for="vol">Volume</label>
+          <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8">
+          <output id="volOut" for="vol">80%</output>
+        </div>
+      </div>
+      <p class="hint">Atalhos: espaço toca e para, teclas 0 a 5 trocam de layer, C liga e desliga o chase.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <h2>Configuração</h2>
+      <div class="row">
+        <label class="field inline"><input type="radio" name="mode" value="multi" checked> Um arquivo por layer</label>
+        <label class="field inline"><input type="radio" name="mode" value="single"> Um único arquivo</label>
+      </div>
+      <div class="row">
+        <label class="field">Layers (sem contar a 0)
+          <select id="layerCount">
+            <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+          </select>
+        </label>
+        <label class="field">Raio (studs)
+          <input type="number" id="radius" min="4" max="200" step="1" value="32">
+        </label>
+        <label class="field">Chase a partir de (studs)
+          <input type="number" id="chaseDist" min="1" max="100" step="1" value="12">
+        </label>
+      </div>
+      <label class="field inline"><input type="checkbox" id="autoChase" checked> Ligar o chase automaticamente pela distância</label>
+    </div>
+
+    <div class="panel">
+      <h2>Fades</h2>
+      <div class="slider">
+        <label for="fadeOut">Fade out ao sair de uma layer</label>
+        <input type="range" id="fadeOut" min="0" max="5" step="0.1" value="1.5">
+        <output id="fadeOutOut" for="fadeOut">1.5 s</output>
+      </div>
+      <div class="slider">
+        <label for="fadeIn">Fade in ao entrar em uma layer</label>
+        <input type="range" id="fadeIn" min="0" max="5" step="0.1" value="0.8">
+        <output id="fadeInOut" for="fadeIn">0.8 s</output>
+      </div>
+      <div class="slider">
+        <label for="fadeChase">Fade do chase (entrada e saída)</label>
+        <input type="range" id="fadeChase" min="0" max="5" step="0.1" value="1.2">
+        <output id="fadeChaseOut" for="fadeChase">1.2 s</output>
+      </div>
+      <label class="field inline"><input type="checkbox" id="crossfade" checked> Crossfade (desmarcado: o novo só entra depois do fade out terminar)</label>
+    </div>
+
+    <div class="panel">
+      <h2>Áudio</h2>
+      <p class="hint" style="margin-top:0">As layers tocam em loop e em sincronia. No chase, só a layer 0 (ambiente ou silêncio) continua ativa.</p>
+      <div id="slots"></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const S = {
+    mode: 'multi', layers: 3, radius: 32, chaseDist: 12, autoChase: true,
+    fadeOut: 1.5, fadeIn: 0.8, fadeChase: 1.2, crossfade: true,
+    volume: 0.8, playing: false, layer: 0, chase: false,
+    dist: 60, angle: -Math.PI / 3
+  };
+  const main = { buffer: null, name: '' };
+  const slots = {};
+  let ctx = null, master = null, chaseTimer = null, restartTimer = null, stopTimer = null, toastTimer = null;
+
+  const slot = id => (slots[id] ||= { id, buffer: null, name: '', start: null, end: null, gain: null, src: null, target: undefined });
+  const ids = () => ['amb', ...Array.from({ length: S.layers }, (_, i) => 'l' + (i + 1)), 'chase'];
+  const maxDist = () => Math.max(S.radius * 1.5, S.chaseDist * 2);
+  const fmt = s => s.toFixed(1) + ' s';
+  const round1 = x => Math.round(x * 10) / 10;
+
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  function h(tag, props = {}, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') el.className = v;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (v === true) el.setAttribute(k, '');
+      else if (v !== false && v != null) el.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) if (kid != null) el.append(kid);
+    return el;
+  }
+
+  /* ---------- Áudio ---------- */
+  function ensureCtx() {
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      master = ctx.createGain();
+      master.gain.value = S.volume;
+      master.connect(ctx.destination);
+    }
+    return ctx;
+  }
+
+  function ensureGain(id) {
+    const sl = slot(id);
+    if (!sl.gain) {
+      sl.gain = ensureCtx().createGain();
+      sl.gain.gain.value = 0;
+      sl.gain.connect(master);
+    }
+    return sl.gain;
+  }
+
+  async function decodeFile(file) {
+    const ab = await file.arrayBuffer();
+    return await ensureCtx().decodeAudioData(ab);
+  }
+
+  function getPlayable(id) {
+    const sl = slot(id);
+    if (id === 'amb' || S.mode === 'multi') {
+      return sl.buffer ? { buffer: sl.buffer, start: 0 } : null;
+    }
+    if (!main.buffer) return null;
+    const d = main.buffer.duration;
+    const start = Math.max(0, sl.start ?? 0);
+    const end = Math.min(d, sl.end ?? d);
+    if (!(end - start > 0.05)) return null;
+    return { buffer: main.buffer, start, end, seg: true };
+  }
+
+  function startSource(id) {
+    const p = getPlayable(id);
+    stopSource(id);
+    if (!p) return;
+    const g = ensureGain(id);
+    const src = ctx.createBufferSource();
+    src.buffer = p.buffer;
+    src.loop = true;
+    if (p.seg) { src.loopStart = p.start; src.loopEnd = p.end; }
+    src.connect(g);
+    src.start(0, p.start || 0);
+    slot(id).src = src;
+  }
+
+  function stopSource(id) {
+    const sl = slots[id];
+    if (sl && sl.src) {
+      try { sl.src.stop(); } catch (e) {}
+      try { sl.src.disconnect(); } catch (e) {}
+      sl.src = null;
+    }
+  }
+
+  function rampGain(id, target, dur, delay = 0) {
+    const g = ensureGain(id).gain;
+    const t = ctx.currentTime;
+    const cur = g.value;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(cur, t);
+    if (delay > 0) g.setValueAtTime(cur, t + delay);
+    if (dur <= 0.005) g.setValueAtTime(target, t + delay);
+    else g.linearRampToValueAtTime(target, t + delay + dur);
+  }
+
+  function targets() {
+    const t = { amb: (S.chase || S.layer === 0) ? 1 : 0 };
+    for (let i = 1; i <= S.layers; i++) t['l' + i] = (!S.chase && S.layer === i) ? 1 : 0;
+    t.chase = S.chase ? 1 : 0;
+    return t;
+  }
+
+  function resetTargets() { for (const id in slots) slots[id].target = undefined; }
+
+  function applyState(instant = false) {
+    if (!S.playing || !ctx) return;
+    const t = targets();
+    if (S.chase) {
+      clearTimeout(chaseTimer);
+      if (!slot('chase').src) startSource('chase');
+    }
+    const changed = [];
+    let outMax = 0;
+    for (const id of Object.keys(t)) {
+      const sl = slot(id);
+      if (!instant && sl.target === t[id]) continue;
+      changed.push(id);
+      if (!instant && t[id] === 0 && sl.target === 1) {
+        outMax = Math.max(outMax, id === 'chase' ? S.fadeChase : S.fadeOut);
+      }
+    }
+    for (const id of changed) {
+      const tg = t[id];
+      const isChase = id === 'chase';
+      if (instant) rampGain(id, tg, 0.03, 0);
+      else if (tg === 0) rampGain(id, 0, isChase ? S.fadeChase : S.fadeOut, 0);
+      else rampGain(id, 1, isChase ? S.fadeChase : S.fadeIn, S.crossfade ? 0 : outMax);
+      slot(id).target = tg;
+    }
+    if (!S.chase) {
+      clearTimeout(chaseTimer);
+      if (slot('chase').src) {
+        chaseTimer = setTimeout(() => { if (!S.chase) stopSource('chase'); }, (S.fadeChase + 0.2) * 1000);
+      }
+    }
+  }
+
+  function play() {
+    ensureCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    clearTimeout(stopTimer);
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.setValueAtTime(S.volume, ctx.currentTime);
+    S.playing = true;
+    for (const id in slots) stopSource(id);
+    for (const id of ids()) if (id !== 'chase') startSource(id);
+    if (S.chase) startSource('chase');
+    resetTargets();
+    applyState(true);
+    updateUI();
+    const any = ids().some(id => getPlayable(id));
+    if (!any) toast('Nenhum áudio carregado ainda. Escolha um arquivo na coluna ao lado.');
+  }
+
+  function stop() {
+    if (!S.playing) return;
+    S.playing = false;
+    const t = ctx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(0, t + 0.15);
+    stopTimer = setTimeout(() => { for (const id in slots) stopSource(id); }, 200);
+    updateUI();
+  }
+
+  function restartAll() {
+    if (!S.playing) return;
+    for (const id in slots) stopSource(id);
+    const active = ids();
+    for (const id of active) if (id !== 'chase') startSource(id);
+    if (S.chase) startSource('chase');
+    for (const id in slots) if (!active.includes(id) && slots[id].gain) slots[id].gain.gain.value = 0;
+    resetTargets();
+    applyState(true);
+  }
+
+  function scheduleRestart() {
+    clearTimeout(restartTimer);
+    restartTimer = setTimeout(restartAll, 350);
+  }
+
+  /* ---------- Estado: layers e chase ---------- */
+  function layerFromDistance(d) {
+    if (d > S.radius) return 0;
+    const N = S.layers;
+    const k = N - Math.floor(d / (S.radius / N));
+    return Math.min(N, Math.max(1, k));
+  }
+
+  function setLayer(n) {
+    if (S.chase) return;
+    S.layer = n;
+    applyState();
+    updateUI();
+  }
+
+  function setChase(on) {
+    if (on === S.chase) return;
+    S.chase = on;
+    S.layer = on ? 0 : layerFromDistance(S.dist);
+    applyState();
+    updateUI();
+  }
+
+  function onDistance(d) {
+    S.dist = d;
+    if (S.autoChase) {
+      if (!S.chase && d <= S.chaseDist) setChase(true);
+      else if (S.chase && d > S.chaseDist * 1.25) setChase(false);
+    }
+    if (!S.chase) {
+      const L = layerFromDistance(d);
+      if (L !== S.layer) { S.layer = L; applyState(); }
+    }
+    updateUI();
+  }
+
+  /* ---------- Arquivos ---------- */
+  async function loadSlotFile(id, file) {
+    if (!file) return;
+    try {
+      const buf = await decodeFile(file);
+      slot(id).buffer = buf;
+      slot(id).name = file.name;
+    } catch (e) {
+      toast('Não consegui ler "' + file.name + '". Tente MP3, OGG ou WAV.');
+      return;
+    }
+    renderSlots();
+    restartAll();
+  }
+
+  async function loadMainFile(file) {
+    if (!file) return;
+    try {
+      main.buffer = await decodeFile(file);
+      main.name = file.name;
+    } catch (e) {
+      toast('Não consegui ler "' + file.name + '". Tente MP3, OGG ou WAV.');
+      return;
+    }
+    splitEqually(true);
+    renderSlots();
+    restartAll();
+  }
+
+  function splitEqually(force) {
+    if (!main.buffer) return;
+    const order = [...Array.from({ length: S.layers }, (_, i) => 'l' + (i + 1)), 'chase'];
+    const d = main.buffer.duration;
+    const part = d / order.length;
+    order.forEach((id, i) => {
+      const sl = slot(id);
+      if (force || sl.end == null) {
+        sl.start = round1(i * part);
+        sl.end = i === order.length - 1 ? Math.floor(d * 10) / 10 : round1((i + 1) * part);
+      }
+    });
+  }
+
+  /* ---------- UI ---------- */
+  function layerColorA(k, a) {
+    const hue = Math.round(190 * (1 - k / S.layers));
+    return `hsla(${hue},55%,48%,${a})`;
+  }
+
+  function renderLayerBar() {
+    const bar = $('#layerBar');
+    bar.replaceChildren();
+    const mk = (label, val, color) => h('button', {
+      class: 'lbtn', type: 'button', 'data-v': val, style: `--c:${color}`,
+      onclick: () => (val === 'chase' ? setChase(!S.chase) : setLayer(+val))
+    }, label);
+    bar.append(mk('Layer 0', 0, '#6f6a78'));
+    for (let k = 1; k <= S.layers; k++) bar.append(mk('Layer ' + k, k, layerColorA(k, 1)));
+    bar.append(mk('Chase', 'chase', '#c4232d'));
+  }
+
+  function slotTitle(id) {
+    if (id === 'amb') return 'Layer 0, ambiente (opcional)';
+    if (id === 'chase') return 'Chase theme';
+    return 'Layer ' + id.slice(1);
+  }
+
+  function renderSlots() {
+    const box = $('#slots');
+    box.replaceChildren();
+
+    if (S.mode === 'single') {
+      box.append(h('div', { class: 'slot' },
+        h('div', { class: 'slot-head' },
+          h('strong', {}, 'Arquivo único'),
+          h('span', { class: 'fname' }, main.buffer ? `${main.name} (${fmt(main.buffer.duration)})` : 'Nenhum arquivo')),
+        h('div', { class: 'row', style: 'margin:0' },
+          h('input', { type: 'file', accept: 'audio/*', 'aria-label': 'Arquivo único', onchange: e => loadMainFile(e.target.files[0]) }),
+          h('button', { class: 'btn2', type: 'button', onclick: () => { splitEqually(true); renderSlots(); restartAll(); } }, 'Dividir em partes iguais')),
+        h('p', { class: 'hint' }, 'Defina abaixo o trecho de cada layer e do chase, em segundos. Cada trecho toca em loop.')));
+    }
+
+    for (const id of ids()) {
+      const sl = slot(id);
+      const head = h('div', { class: 'slot-head' }, h('strong', {}, slotTitle(id)));
+      const card = h('div', { class: 'slot', 'data-id': id }, head);
+
+      if (id === 'amb' || S.mode === 'multi') {
+        head.append(h('span', { class: 'fname' }, sl.buffer ? `${sl.name} (${fmt(sl.buffer.duration)})` : (id === 'amb' ? 'Sem arquivo: silêncio' : 'Nenhum arquivo')));
+        card.append(h('input', { type: 'file', accept: 'audio/*', 'aria-label': slotTitle(id), onchange: e => loadSlotFile(id, e.target.files[0]) }));
+      } else {
+        const len = h('span', { class: 'seglen' });
+        const refresh = () => {
+          if (!main.buffer) { len.textContent = 'Carregue o arquivo único primeiro'; len.className = 'seglen bad'; return; }
+          const ok = sl.start != null && sl.end != null && sl.end - sl.start > 0.05;
+          len.textContent = ok ? 'Duração do trecho: ' + fmt(sl.end - sl.start) : 'O fim precisa ser maior que o início';
+          len.className = 'seglen' + (ok ? '' : ' bad');
+        };
+        const num = (label, key) => h('label', { class: 'field' }, label,
+          h('input', {
+            type: 'number', min: 0, step: 0.1, value: sl[key] ?? '',
+            oninput: e => { const v = parseFloat(e.target.value); sl[key] = isNaN(v) ? null : v; refresh(); scheduleRestart(); }
+          }));
+        card.append(h('div', { class: 'seg' }, num('Início (s)', 'start'), num('Fim (s)', 'end'), len));
+        refresh();
+        if (id === 'chase') card.append(h('p', { class: 'hint' }, 'Toca por cima da layer 0. As outras layers ficam travadas durante o chase.'));
+      }
+      card.append(h('div', { class: 'meter' }, h('i', { 'data-meter': id })));
+      box.append(card);
+    }
+  }
+
+  function updateUI() {
+    document.querySelectorAll('.lbtn').forEach(b => {
+      const v = b.dataset.v;
+      const on = v === 'chase' ? S.chase : (+v === S.layer);
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on);
+      b.disabled = S.chase && v !== 'chase' && +v > 0;
+    });
+    const d = S.dist;
+    $('#dist').max = maxDist();
+    $('#dist').value = d;
+    $('#distOut').textContent = (Number.isInteger(d) ? d : d.toFixed(1)) + ' studs';
+    if (S.chase) {
+      $('#rdBig').textContent = 'Chase';
+      $('#rdSub').textContent = 'As layers 1 a ' + S.layers + ' ficam travadas. Só a layer 0 continua.';
+    } else {
+      $('#rdBig').textContent = 'Layer ' + S.layer + (S.layer === 0 ? (slot('amb').buffer ? ' (ambiente)' : ' (silêncio)') : '');
+      $('#rdSub').textContent = S.playing ? `Killer a ${d} studs do sobrevivente.` : 'Parado. Aperte Tocar para ouvir.';
+    }
+    const pb = $('#playBtn');
+    pb.textContent = S.playing ? 'Parar' : 'Tocar';
+    pb.classList.toggle('on', S.playing);
+  }
+
+  /* ---------- Radar ---------- */
+  const radar = $('#radar');
+  function drawRadar() {
+    const size = radar.clientWidth;
+    if (!size) return;
+    const dpr = window.devicePixelRatio || 1;
+    if (radar.width !== Math.round(size * dpr)) { radar.width = Math.round(size * dpr); radar.height = Math.round(size * dpr); }
+    const g = radar.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, size, size);
+    const cx = size / 2, cy = size / 2, R = size / 2 - 14;
+    const scale = R / maxDist();
+    const N = S.layers;
+
+    // layer 0 (fora do raio)
+    g.fillStyle = S.layer === 0 ? 'rgba(235,228,211,.12)' : 'rgba(235,228,211,.04)';
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
+
+    // layers de fora para dentro
+    for (let k = 1; k <= N; k++) {
+      const r = S.radius * (N - k + 1) / N * scale;
+      const active = !S.chase && S.layer === k;
+      g.fillStyle = layerColorA(k, active ? 0.55 : 0.16);
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = layerColorA(k, 0.85); g.lineWidth = 1;
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+    }
+
+    // anel do chase
+    const cr = S.chaseDist * scale;
+    if (S.chase) { g.fillStyle = 'rgba(196,35,45,.38)'; g.beginPath(); g.arc(cx, cy, cr, 0, Math.PI * 2); g.fill(); }
+    g.strokeStyle = '#c4232d'; g.lineWidth = 1.5; g.setLineDash([6, 5]);
+    g.beginPath(); g.arc(cx, cy, cr, 0, Math.PI * 2); g.stroke();
+    g.setLineDash([]);
+
+    // rótulos
+    g.font = "600 12px Barlow, system-ui, sans-serif";
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = 'rgba(235,228,211,.9)';
+    for (let k = 1; k <= N; k++) {
+      const mid = S.radius * ((N - k) + (N - k + 1)) / (2 * N) * scale;
+      g.fillText('Layer ' + k, cx, cy - mid);
+    }
+    g.fillStyle = 'rgba(235,228,211,.6)';
+    g.fillText('Layer 0', cx, cy - Math.min(R - 8, S.radius * 1.12 * scale));
+    g.fillStyle = '#e8838a';
+    g.fillText('Chase', cx, cy + cr + 12);
+
+    // sobrevivente
+    g.fillStyle = '#ebe4d3';
+    g.beginPath(); g.arc(cx, cy, 6, 0, Math.PI * 2); g.fill();
+
+    // killer
+    const d = Math.min(S.dist, maxDist());
+    const kx = cx + Math.cos(S.angle) * d * scale;
+    const ky = cy + Math.sin(S.angle) * d * scale;
+    g.save();
+    if (S.chase) { g.shadowColor = '#e0343f'; g.shadowBlur = 18; }
+    g.fillStyle = '#c4232d';
+    g.beginPath(); g.arc(kx, ky, 10, 0, Math.PI * 2); g.fill();
+    g.restore();
+    g.strokeStyle = '#ebe4d3'; g.lineWidth = 2;
+    g.beginPath(); g.arc(kx, ky, 10, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#ebe4d3';
+    g.fillText('Killer', kx, ky - 19);
+  }
+
+  let dragging = false;
+  function moveKiller(e) {
+    const r = radar.getBoundingClientRect();
+    const size = r.width;
+    const cx = r.left + size / 2, cy = r.top + size / 2;
+    const scale = (size / 2 - 14) / maxDist();
+    const dx = e.clientX - cx, dy = e.clientY - cy;
+    S.angle = Math.atan2(dy, dx);
+    onDistance(Math.round(Math.min(maxDist(), Math.hypot(dx, dy) / scale) * 2) / 2);
+  }
+  radar.addEventListener('pointerdown', e => { radar.setPointerCapture(e.pointerId); dragging = true; moveKiller(e); });
+  radar.addEventListener('pointermove', e => { if (dragging) moveKiller(e); });
+  ['pointerup', 'pointercancel'].forEach(ev => radar.addEventListener(ev, () => { dragging = false; }));
+
+  function loop() {
+    document.querySelectorAll('[data-meter]').forEach(el => {
+      const sl = slots[el.dataset.meter];
+      const v = sl && sl.gain ? sl.gain.gain.value : 0;
+      el.style.width = Math.max(0, Math.min(1, v)) * 100 + '%';
+    });
+    drawRadar();
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- Controles ---------- */
+  $('#playBtn').addEventListener('click', () => (S.playing ? stop() : play()));
+
+  $('#dist').addEventListener('input', e => onDistance(+e.target.value));
+
+  $('#vol').addEventListener('input', e => {
+    S.volume = +e.target.value;
+    $('#volOut').textContent = Math.round(S.volume * 100) + '%';
+    if (master && S.playing) master.gain.setTargetAtTime(S.volume, ctx.currentTime, 0.02);
+  });
+
+  document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', e => {
+    S.mode = e.target.value;
+    if (S.mode === 'single') splitEqually(false);
+    renderSlots();
+    restartAll();
+  }));
+
+  $('#layerCount').addEventListener('change', e => {
+    S.layers = +e.target.value;
+    ids().forEach(slot);
+    if (S.layer > S.layers) S.layer = S.layers;
+    if (S.mode === 'single') splitEqually(false);
+    renderLayerBar();
+    renderSlots();
+    restartAll();
+    S.layer = S.chase ? 0 : layerFromDistance(S.dist);
+    applyState();
+    updateUI();
+  });
+
+  $('#radius').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    if (!(v >= 4)) return;
+    S.radius = v;
+    S.dist = Math.min(S.dist, maxDist());
+    onDistance(S.dist);
+  });
+
+  $('#chaseDist').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    if (!(v >= 1)) return;
+    S.chaseDist = v;
+    S.dist = Math.min(S.dist, maxDist());
+    onDistance(S.dist);
+  });
+
+  $('#autoChase').addEventListener('change', e => { S.autoChase = e.target.checked; });
+  $('#crossfade').addEventListener('change', e => { S.crossfade = e.target.checked; });
+
+  [['fadeOut', 'fadeOut'], ['fadeIn', 'fadeIn'], ['fadeChase', 'fadeChase']].forEach(([id, key]) => {
+    $('#' + id).addEventListener('input', e => {
+      S[key] = +e.target.value;
+      $('#' + id + 'Out').textContent = S[key].toFixed(1) + ' s';
+    });
+  });
+
+  document.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t.matches('input[type=number],input[type=file],select,textarea')) return;
+    if (e.code === 'Space' && t.tagName !== 'BUTTON') { e.preventDefault(); S.playing ? stop() : play(); return; }
+    if (/^[0-9]$/.test(e.key)) { const n = +e.key; if (n <= S.layers) setLayer(n); return; }
+    if (e.key === 'c' || e.key === 'C') setChase(!S.chase);
+  });
+
+  /* ---------- Início ---------- */
+  ids().forEach(slot);
+  renderLayerBar();
+  renderSlots();
+  updateUI();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
